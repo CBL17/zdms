@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# zig artifacts
+zig-out/
+.zig-cache/
