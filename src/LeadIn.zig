@@ -38,12 +38,36 @@ const LeadInError = error{
     InvalidVersion,
 };
 
-pub fn init(buf: [4 + @sizeOf(Self)]u8) LeadInError!Self {
+const empty = Self{
+    .toc_mask = .{
+        .raw_data = 0,
+        .big_endian = 0,
+        .daqmx_data = 0,
+        .interleaved = 0,
+        .new_obj_list = 0,
+        .contains_meta_data = 0,
+    },
+    .version = 0,
+    .data_offset = 0,
+    .next_segment = 0,
+};
+
+pub fn init(buf: []u8) LeadInError!Self {
     if (!std.mem.eql(u8, TDSM_TAG, buf[0..4])) return LeadInError.IncorrectTDSmTag;
-    const result = std.mem.bytesToValue(Self, buf[4..@sizeOf(Self)]);
+
+    var result: Self = .empty;
+
+    result.toc_mask = std.mem.bytesToValue(ToC, buf[4 .. 4 + @sizeOf(@TypeOf(result.toc_mask))]);
+    result.version = std.mem.bytesToValue(u32, buf[8 .. 8 + @sizeOf(@TypeOf(result.version))]);
+    result.next_segment = std.mem.bytesToValue(u32, buf[12 .. 12 + @sizeOf(@TypeOf(result.version))]);
+    result.data_offset = std.mem.bytesToValue(u32, buf[20 .. 20 + @sizeOf(@TypeOf(result.version))]);
 
     if ((result.version == GOOD_VERSION) or (result.version == (GOOD_VERSION + 1))) return result else {
         std.log.err("Invalid Version: {d}!! Expected 4713 or 4712.\n", .{result.version});
         return LeadInError.InvalidVersion;
     }
+}
+
+test "size of LeadIn" {
+    try std.testing.expectEqual(@sizeOf(Self), 24);
 }

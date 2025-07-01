@@ -5,25 +5,25 @@
 //! It will work pretty simply with how this one is spread out rn
 
 const std = @import("std");
-const MetaData = @import("MetaData.zig");
-const LeadIn = @import("LeadIn.zig");
+pub const MetaData = @import("MetaData.zig");
+pub const LeadIn = @import("LeadIn.zig");
 
 const MultiArrayList = std.MultiArrayList;
 
 /// TDMS supported datatypes
 pub const DataType = enum(u32) {
-    void,
-    i8,
-    i16,
-    i32,
-    i64,
-    u8,
-    u16,
-    u32,
-    u64,
-    float,
-    double,
-    extended_float,
+    void = 0,
+    i8 = 1,
+    i16 = 2,
+    i32 = 3,
+    i64 = 4,
+    u8 = 5,
+    u16 = 6,
+    u32 = 7,
+    u64 = 8,
+    float = 9,
+    double = 10,
+    extended_float = 11,
     float_unit = 0x19,
     double_unit,
     extended_float_unit,
