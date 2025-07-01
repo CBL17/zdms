@@ -1,7 +1,7 @@
 .{
     .name = .zdms,
     .version = "0.0.1",
-    .fingerprint = 0x396e3f990beb7080,
+    .fingerprint = 0x7347c974605d5b3b,
     .minimum_zig_version = "0.14.0",
     .paths = .{
         "build.zig",
