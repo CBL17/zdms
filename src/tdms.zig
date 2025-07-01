@@ -7,6 +7,7 @@
 const std = @import("std");
 pub const MetaData = @import("MetaData.zig");
 pub const LeadIn = @import("LeadIn.zig");
+pub const utils = @import("utils.zig");
 
 const MultiArrayList = std.MultiArrayList;
 

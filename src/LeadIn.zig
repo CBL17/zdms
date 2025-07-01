@@ -3,6 +3,8 @@ const std = @import("std");
 
 const Self = @This();
 
+const u1Stringify = @import("utils.zig").u1ToBoolStr;
+
 const TDSM_TAG = "TDSm";
 const GOOD_VERSION = 4712;
 
@@ -31,11 +33,29 @@ const ToC = packed struct {
     big_endian: u1,
     daqmx_data: u1,
     _padding_0: u24 = 0,
+
+    pub fn format(
+        self: @This(),
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = options;
+        _ = fmt;
+
+        try writer.print("Contains meta data: {s}\n", .{u1Stringify(self.contains_meta_data)});
+        try writer.print("New object list: {s}\n", .{u1Stringify(self.new_obj_list)});
+        try writer.print("Contains raw data: {s}\n", .{u1Stringify(self.raw_data)});
+        try writer.print("Contains DAQmx raw data: {s}\n", .{u1Stringify(self.daqmx_data)});
+        try writer.print("Raw data is interleaved: {s}\n", .{u1Stringify(self.interleaved)});
+        try writer.print("Endianess: {s}", .{if (self.big_endian == 1) "big" else "little"});
+    }
 };
 
 const LeadInError = error{
     IncorrectTDSmTag,
     InvalidVersion,
+    BufferTooSmall,
 };
 
 const empty = Self{
@@ -53,6 +73,8 @@ const empty = Self{
 };
 
 pub fn init(buf: []u8) LeadInError!Self {
+    if (buf.len < @sizeOf(Self)) return LeadInError.BufferTooSmall;
+
     if (!std.mem.eql(u8, TDSM_TAG, buf[0..4])) return LeadInError.IncorrectTDSmTag;
 
     var result: Self = .empty;
@@ -68,6 +90,27 @@ pub fn init(buf: []u8) LeadInError!Self {
     }
 }
 
+pub fn format(
+    self: @This(),
+    comptime fmt: []const u8,
+    options: std.fmt.FormatOptions,
+    writer: anytype,
+) !void {
+    _ = options;
+    _ = fmt;
+
+    try writer.print("{s}\n", .{self.toc_mask});
+    try writer.print("Version: {s}\n", .{if (self.version == GOOD_VERSION) "TDMS 1.0" else "TDMS 2.0"});
+    try writer.print("Next Segment: +{d}\n", .{self.next_segment});
+    try writer.print("Data Segment: +{d}", .{self.data_offset});
+}
+
 test "size of LeadIn" {
     try std.testing.expectEqual(@sizeOf(Self), 24);
+}
+
+test "buffer too small" {
+    var buf: [12]u8 = [_]u8{0} ** 12;
+
+    try std.testing.expectError(LeadInError.BufferTooSmall, Self.init(&buf));
 }
