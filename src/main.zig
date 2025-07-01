@@ -27,7 +27,12 @@ pub fn main() !void {
     const md = try MetaData.init(dba.allocator(), buf[@sizeOf(LeadIn) + 4 ..]);
 
     for (0..md.num_objects) |i| {
-        std.debug.print("{s}\n", .{md.object_list.get(i).path});
+        const obj = md.object_list.get(i);
+        std.debug.print("{s}\n", .{obj.path});
+        for (0..obj.num_properties) |j| {
+            const prop = obj.properies.get(j);
+            std.debug.print("   {s}\n", .{prop});
+        }
     }
     std.debug.print("{d}\n", .{md.object_list.len});
 }

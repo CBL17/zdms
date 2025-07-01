@@ -87,6 +87,39 @@ const Object = struct {
                 .value = property,
             };
         }
+
+        pub fn format(
+            self: @This(),
+            comptime fmt: []const u8,
+            options: std.fmt.FormatOptions,
+            writer: anytype,
+        ) !void {
+            _ = options;
+            _ = fmt;
+
+            try writer.print("{s}: ", .{self.name});
+            switch (self.dt) {
+                .bool => try writer.print("{b}", .{self.value}),
+                .i8,
+                .i16,
+                .i32,
+                .i64,
+                .u8,
+                .u16,
+                .u32,
+                .u64,
+                => try writer.print("{d}", .{std.mem.bytesToValue(u64, self.value)}),
+                .float,
+                .float_unit,
+                .double,
+                .double_unit,
+                .fixed_point,
+                => try writer.print("{d}", .{std.mem.bytesToValue(f64, self.value)}),
+
+                .string => try writer.print("{s}", .{self.value}),
+                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => unreachable,
+            }
+        }
     };
 
     pub const empty = Object{
