@@ -224,6 +224,21 @@ const Object = struct {
             };
         }
     }
+
+    pub fn format(
+        self: @This(),
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = options;
+        _ = fmt;
+
+        try writer.print("Path: {s}\n", .{self.path});
+        for (0..self.num_properties) |i| {
+            try writer.print("{s}\n", .{self.properies.get(i)});
+        }
+    }
 };
 
 pub fn init(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
@@ -239,4 +254,18 @@ pub fn init(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
         .object_list = obj_list,
         .num_objects = num_objs,
     };
+}
+
+pub fn format(
+    self: @This(),
+    comptime fmt: []const u8,
+    options: std.fmt.FormatOptions,
+    writer: anytype,
+) !void {
+    _ = options;
+    _ = fmt;
+
+    for (0..self.num_objects) |i| {
+        try writer.print("{s}\n", .{self.object_list.get(i)});
+    }
 }
