@@ -56,7 +56,7 @@ pub const Object = struct {
         dt: DataType,
         value: []u8,
 
-        pub fn init(buf: []u8, index: *usize) Property {
+        pub fn parse(buf: []u8, index: *usize) Property {
             var i = index.*;
             defer index.* = i;
 
@@ -130,7 +130,7 @@ pub const Object = struct {
         .num_properties = 0,
     };
 
-    pub fn init(allocator: std.mem.Allocator, buf: []u8, index: *usize) anyerror!Object {
+    pub fn parse(allocator: std.mem.Allocator, buf: []u8, index: *usize) anyerror!Object {
         var i: usize = index.*;
         defer index.* = i;
 
@@ -154,7 +154,7 @@ pub const Object = struct {
                     var properties: Properties = .empty;
                     var property_index: usize = 0;
                     for (0..num_properties) |_| {
-                        try properties.append(allocator, Property.init(buf[i..], &property_index));
+                        try properties.append(allocator, Property.parse(buf[i..], &property_index));
                     }
 
                     i += property_index;
@@ -197,7 +197,7 @@ pub const Object = struct {
 
             var property_index: usize = 0;
             for (0..num_properties) |_| {
-                try properties.append(allocator, Property.init(buf[i..], &property_index));
+                try properties.append(allocator, Property.parse(buf[i..], &property_index));
             }
             i += property_index;
 
@@ -238,13 +238,13 @@ pub const Object = struct {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
+pub fn parse(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
     const num_objs = std.mem.bytesToValue(u32, buf[0..4]);
     var obj_list = ObjectList{};
 
     var index: usize = 0;
     for (0..num_objs) |_| {
-        try obj_list.append(allocator, try Object.init(allocator, buf[4..], &index));
+        try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index));
     }
 
     return Self{

@@ -72,7 +72,7 @@ const empty = Self{
     .next_segment = 0,
 };
 
-pub fn init(buf: []u8) LeadInError!Self {
+pub fn parse(buf: []u8) LeadInError!Self {
     if (buf.len < @sizeOf(Self)) return LeadInError.BufferTooSmall;
 
     if (!std.mem.eql(u8, TDSM_TAG, buf[0..4])) return LeadInError.IncorrectTDSmTag;
@@ -112,5 +112,5 @@ test "size of LeadIn" {
 test "buffer too small" {
     var buf: [12]u8 = [_]u8{0} ** 12;
 
-    try std.testing.expectError(LeadInError.BufferTooSmall, Self.init(&buf));
+    try std.testing.expectError(LeadInError.BufferTooSmall, Self.parse(&buf));
 }

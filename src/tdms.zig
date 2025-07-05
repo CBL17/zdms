@@ -65,10 +65,6 @@ pub fn size_of(dt: DataType) DataTypeError!u32 {
     };
 }
 
-pub fn init(buf: []const u8) anyerror!void {
-    buf;
-}
-
 test {
     _ = @import("MetaData.zig");
     _ = @import("LeadIn.zig");
