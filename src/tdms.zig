@@ -5,7 +5,7 @@
 //! It will work pretty simply with how this one is spread out rn
 
 const std = @import("std");
-pub const MetaData = @import("MetaData.zig");
+pub const MetaData = @import("metadata.zig");
 pub const LeadIn = @import("LeadIn.zig");
 pub const utils = @import("utils.zig");
 
@@ -66,6 +66,6 @@ pub fn size_of(dt: DataType) DataTypeError!u32 {
 }
 
 test {
-    _ = @import("MetaData.zig");
+    _ = @import("metadata.zig");
     _ = @import("LeadIn.zig");
 }

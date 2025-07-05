@@ -9,11 +9,6 @@ const DataType = tdms.DataType;
 pub const ObjectList = std.MultiArrayList(Object);
 
 const Self = @This();
-num_objects: u32,
-object_list: ObjectList,
-
-/// Occurs when `num_objects == 0`
-const MIN_SIZE = 4;
 
 pub const Object = struct {
     // path len is the first 4 bytes but can be encapsulated in the slice
@@ -38,6 +33,7 @@ pub const Object = struct {
         dt: DataType,
         /// In TDMS file format version 2.0, 1 is the only valid value
         dim: u32,
+        /// Number of items in a chunk
         length: u64,
         /// Only stored for variable-length data types (i.e. strings)
         size: u64 = 0,
@@ -238,7 +234,7 @@ pub const Object = struct {
     }
 };
 
-pub fn parse(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
+pub fn parse(allocator: std.mem.Allocator, buf: []u8) anyerror!ObjectList {
     const num_objs = std.mem.bytesToValue(u32, buf[0..4]);
     var obj_list = ObjectList{};
 
@@ -247,10 +243,7 @@ pub fn parse(allocator: std.mem.Allocator, buf: []u8) anyerror!Self {
         try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index));
     }
 
-    return Self{
-        .object_list = obj_list,
-        .num_objects = num_objs,
-    };
+    return obj_list;
 }
 
 pub fn format(
