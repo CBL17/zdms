@@ -49,7 +49,7 @@ pub fn format_specifier(dt: DataType) DataTypeError!u32 {
         .i8, .i16, .i32, .i64, .u8, .u16, .u32, .u64 => 'd',
         .float, .float_unit, .double, .double_unit, .fixed_point => 'd',
         .string => 's',
-        .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .string, .raw_data => DataTypeError,
+        .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .string, .raw_data => DataTypeError.UnsupportedDataType,
     };
 }
 
