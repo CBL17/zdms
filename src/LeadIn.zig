@@ -20,7 +20,7 @@ const Version = enum(u32) {
         _ = fmt;
         _ = options;
 
-        try writer.print("Version: {s}\n", .{if (self.version == .VERSION_1) "TDMS 1.0" else "TDMS 2.0"});
+        try writer.print("Version: {s}", .{if (self == .VERSION_1) "TDMS 1.0" else "TDMS 2.0"});
     }
 };
 
@@ -91,24 +91,35 @@ const empty = Self{
 pub fn parse(buf: []u8) LeadInError!Self {
     if (buf.len < @sizeOf(Self)) return LeadInError.BufferTooSmall;
 
-    if (!std.mem.eql(u8, TDSM_TAG, buf[0..4])) return LeadInError.IncorrectTDSmTag;
+    var i: usize = 0;
+
+    if (!std.mem.eql(u8, TDSM_TAG, buf[i..][0..4])) return LeadInError.IncorrectTDSmTag;
+    i += 4;
 
     var result: Self = .empty;
 
-    result.toc_mask = std.mem.bytesToValue(ToC, buf[4 .. 4 + @sizeOf(@TypeOf(result.toc_mask))]);
+    result.toc_mask = std.mem.bytesToValue(ToC, buf[i..][0..@sizeOf(@TypeOf(result.toc_mask))]);
+    i += @sizeOf(ToC);
 
-    const version_number = std.mem.bytesToValue(u32, buf[8 .. 8 + @sizeOf(@TypeOf(result.version))]);
+    const version_number = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(@TypeOf(result.version))]);
     result.version = std.enums.fromInt(
         Version,
         version_number,
     ).?;
-    result.next_segment = std.mem.bytesToValue(u32, buf[12 .. 12 + @sizeOf(@TypeOf(result.version))]);
-    result.data_offset = std.mem.bytesToValue(u32, buf[20 .. 20 + @sizeOf(@TypeOf(result.version))]);
-
-    if ((result.version == .VERSION_1) or (result.version == .VERSION_2)) return result else {
+    if ((result.version != .VERSION_1) and (result.version != .VERSION_2)) {
         std.log.err("Invalid Version: {d}!! Expected 4713 or 4712.\n", .{version_number});
         return LeadInError.InvalidVersion;
     }
+
+    i += @sizeOf(Version);
+
+    result.next_segment = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(@TypeOf(result.next_segment))]);
+    i += @sizeOf(@TypeOf(result.next_segment));
+
+    result.data_offset = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(@TypeOf(result.data_offset))]);
+    i += @sizeOf(@TypeOf(result.data_offset));
+
+    return result;
 }
 
 pub fn format(
