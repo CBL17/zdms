@@ -15,7 +15,6 @@ pub const Object = struct {
     path: []const u8,
     data_index_tag: DataIndexTag,
     data_index: DataIndex,
-    num_properties: u32,
     properies: Properties,
 
     const Properties = std.MultiArrayList(Property);
@@ -52,7 +51,10 @@ pub const Object = struct {
         dt: DataType,
         value: []u8,
 
-        pub fn parse(buf: []u8, index: *usize) Property {
+        pub fn parse(
+            buf: []u8,
+            index: *usize,
+        ) Property {
             var i = index.*;
             defer index.* = i;
 
@@ -123,10 +125,14 @@ pub const Object = struct {
         .data_index_tag = .no_data,
         .path = "",
         .data_index = DataIndex.empty,
-        .num_properties = 0,
     };
 
-    pub fn parse(allocator: std.mem.Allocator, buf: []u8, index: *usize) anyerror!Object {
+    pub fn parse(
+        allocator: std.mem.Allocator,
+        buf: []u8,
+        index: *usize,
+        last_object: ?Object,
+    ) anyerror!Object {
         var i: usize = index.*;
         defer index.* = i;
 
@@ -157,7 +163,6 @@ pub const Object = struct {
 
                     return Object{
                         .properies = Properties.empty,
-                        .num_properties = 0,
                         .path = path,
                         .data_index_tag = .no_data,
                         .data_index = DataIndex{
@@ -168,54 +173,70 @@ pub const Object = struct {
                         },
                     };
                 },
-                .same_as_previous,
+                .same_as_previous => {
+                    const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
+                    i += @sizeOf(u32);
+
+                    var properties: Properties = .empty;
+                    var property_index: usize = 0;
+                    for (0..num_properties) |_| {
+                        try properties.append(allocator, Property.parse(buf[i..], &property_index));
+                    }
+
+                    i += property_index;
+
+                    return Object{
+                        .properies = properties,
+                        .path = path,
+                        .data_index_tag = last_object.?.data_index_tag,
+                        .data_index = last_object.?.data_index,
+                    };
+                },
                 .format_changing,
                 .digital_line,
                 => @panic("unsported shit detectorino"),
                 .new_index => unreachable,
             };
-        } else {
-            const dt: DataType = @enumFromInt(std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(DataType)]));
-            i += @sizeOf(DataType);
-
-            const dim = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
-            i += @sizeOf(u32);
-
-            const length = std.mem.bytesToValue(u64, buf[i..][0..@sizeOf(u64)]);
-            i += @sizeOf(u64);
-
-            // Variable length data types (strings) have their total size stored here
-
-            const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
-            i += @sizeOf(u32);
-
-            var properties: Properties = .empty;
-
-            var property_index: usize = 0;
-            for (0..num_properties) |_| {
-                try properties.append(allocator, Property.parse(buf[i..], &property_index));
-            }
-            i += property_index;
-
-            switch (dt) {
-                .string => std.log.err("No support for strings atm\n", .{}),
-                .raw_data => std.log.err("No support for daqmx raw data atm\n", .{}),
-                else => {},
-            }
-
-            return Object{
-                .properies = properties,
-                .num_properties = num_properties,
-                .path = path,
-                .data_index_tag = .new_index,
-                .data_index = DataIndex{
-                    .index_size = len_data_index_value,
-                    .dt = dt,
-                    .dim = dim,
-                    .length = length,
-                },
-            };
         }
+        const dt: DataType = @enumFromInt(std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(DataType)]));
+        i += @sizeOf(DataType);
+
+        const dim = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
+        i += @sizeOf(u32);
+
+        const length = std.mem.bytesToValue(u64, buf[i..][0..@sizeOf(u64)]);
+        i += @sizeOf(u64);
+
+        // Variable length data types (strings) have their total size stored here
+
+        const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
+        i += @sizeOf(u32);
+
+        var properties: Properties = .empty;
+
+        var property_index: usize = 0;
+        for (0..num_properties) |_| {
+            try properties.append(allocator, Property.parse(buf[i..], &property_index));
+        }
+        i += property_index;
+
+        switch (dt) {
+            .string => std.log.err("No support for strings atm\n", .{}),
+            .raw_data => std.log.err("No support for daqmx raw data atm\n", .{}),
+            else => {},
+        }
+
+        return Object{
+            .properies = properties,
+            .path = path,
+            .data_index_tag = .new_index,
+            .data_index = DataIndex{
+                .index_size = len_data_index_value,
+                .dt = dt,
+                .dim = dim,
+                .length = length,
+            },
+        };
     }
 
     pub fn format(
@@ -228,19 +249,25 @@ pub const Object = struct {
         _ = fmt;
 
         try writer.print("Path: {s}\n", .{self.path});
-        for (0..self.num_properties) |i| {
+        for (0..self.properies.len) |i| {
             try writer.print("{s}\n", .{self.properies.get(i)});
         }
     }
 };
 
-pub fn parse(allocator: std.mem.Allocator, buf: []u8) anyerror!ObjectList {
+pub fn parse(
+    allocator: std.mem.Allocator,
+    buf: []u8,
+) !ObjectList {
     const num_objs = std.mem.bytesToValue(u32, buf[0..4]);
     var obj_list = ObjectList{};
 
     var index: usize = 0;
-    for (0..num_objs) |_| {
-        try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index));
+
+    try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index, null));
+    for (1..num_objs) |i| {
+        const last_object = obj_list.get(i - 1);
+        try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index, last_object));
     }
 
     return obj_list;
