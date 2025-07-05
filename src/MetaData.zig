@@ -6,7 +6,7 @@ const std = @import("std");
 const tdms = @import("tdms.zig");
 const DataType = tdms.DataType;
 
-const ObjectList = std.MultiArrayList(Object);
+pub const ObjectList = std.MultiArrayList(Object);
 
 const Self = @This();
 num_objects: u32,
@@ -15,7 +15,7 @@ object_list: ObjectList,
 /// Occurs when `num_objects == 0`
 const MIN_SIZE = 4;
 
-const Object = struct {
+pub const Object = struct {
     // path len is the first 4 bytes but can be encapsulated in the slice
     path: []const u8,
     data_index_tag: DataIndexTag,
@@ -175,10 +175,7 @@ const Object = struct {
                 .same_as_previous,
                 .format_changing,
                 .digital_line,
-                => blk: {
-                    std.log.err("Unsupported data index detected: {}", .{tag});
-                    break :blk Object.empty;
-                },
+                => @panic("unsported shit detectorino"),
                 .new_index => unreachable,
             };
         } else {
