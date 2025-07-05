@@ -6,10 +6,26 @@ const Self = @This();
 const u1Stringify = @import("utils.zig").u1ToBoolStr;
 
 const TDSM_TAG = "TDSm";
-const GOOD_VERSION = 4712;
+
+const Version = enum(u32) {
+    VERSION_1 = 4712,
+    VERSION_2 = 4713,
+
+    pub fn format(
+        self: @This(),
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+
+        try writer.print("Version: {s}\n", .{if (self.version == .VERSION_1) "TDMS 1.0" else "TDMS 2.0"});
+    }
+};
 
 toc_mask: ToC,
-version: u32,
+version: Version,
 /// Represents offset to next segment
 ///
 /// If `next_segment` equals 0xFFFFFFFF, the writer encountered some kind
@@ -67,7 +83,7 @@ const empty = Self{
         .new_obj_list = 0,
         .contains_meta_data = 0,
     },
-    .version = 0,
+    .version = .VERSION_1,
     .data_offset = 0,
     .next_segment = 0,
 };
@@ -80,12 +96,17 @@ pub fn parse(buf: []u8) LeadInError!Self {
     var result: Self = .empty;
 
     result.toc_mask = std.mem.bytesToValue(ToC, buf[4 .. 4 + @sizeOf(@TypeOf(result.toc_mask))]);
-    result.version = std.mem.bytesToValue(u32, buf[8 .. 8 + @sizeOf(@TypeOf(result.version))]);
+
+    const version_number = std.mem.bytesToValue(u32, buf[8 .. 8 + @sizeOf(@TypeOf(result.version))]);
+    result.version = std.enums.fromInt(
+        Version,
+        version_number,
+    ).?;
     result.next_segment = std.mem.bytesToValue(u32, buf[12 .. 12 + @sizeOf(@TypeOf(result.version))]);
     result.data_offset = std.mem.bytesToValue(u32, buf[20 .. 20 + @sizeOf(@TypeOf(result.version))]);
 
-    if ((result.version == GOOD_VERSION) or (result.version == (GOOD_VERSION + 1))) return result else {
-        std.log.err("Invalid Version: {d}!! Expected 4713 or 4712.\n", .{result.version});
+    if ((result.version == .VERSION_1) or (result.version == .VERSION_2)) return result else {
+        std.log.err("Invalid Version: {d}!! Expected 4713 or 4712.\n", .{version_number});
         return LeadInError.InvalidVersion;
     }
 }
@@ -100,7 +121,7 @@ pub fn format(
     _ = fmt;
 
     try writer.print("{s}\n", .{self.toc_mask});
-    try writer.print("Version: {s}\n", .{if (self.version == GOOD_VERSION) "TDMS 1.0" else "TDMS 2.0"});
+    try writer.print("{s}\n", .{self.version});
     try writer.print("Next Segment: +{d}\n", .{self.next_segment});
     try writer.print("Data Segment: +{d}", .{self.data_offset});
 }
