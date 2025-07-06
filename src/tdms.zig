@@ -37,6 +37,18 @@ pub const DataType = enum(u32) {
     complex_float = 0x08000C,
     complex_double = 0x10000D,
     raw_data = 0xFFFFFFFF,
+
+    pub fn size_of(self: DataType) DataTypeError!u32 {
+        return switch (self) {
+            .void => 0,
+            .i8, .u8, .bool => 1,
+            .i16, .u16 => 2,
+            .i32, .u32, .float, .float_unit => 4,
+            .i64, .u64, .double, .double_unit, .fixed_point, .complex_float => 8,
+            .timestamp, .extended_float, .extended_float_unit, .complex_double => 16,
+            .string, .raw_data => DataTypeError.UnsupportedDataType,
+        };
+    }
 };
 
 pub const DataTypeError = error{
@@ -53,16 +65,43 @@ pub fn format_specifier(dt: DataType) DataTypeError!u32 {
     };
 }
 
-pub fn size_of(dt: DataType) DataTypeError!u32 {
-    return switch (dt) {
-        .void => 0,
-        .i8, .u8, .bool => 1,
-        .i16, .u16 => 2,
-        .i32, .u32, .float, .float_unit => 4,
-        .i64, .u64, .double, .double_unit, .fixed_point, .complex_float => 8,
-        .timestamp, .extended_float, .extended_float_unit, .complex_double => 16,
-        .string, .raw_data => DataTypeError.UnsupportedDataType,
+const Group = struct {
+    header: LeadIn,
+    objects: MetaData.ObjectList,
+};
+
+const GroupList = MultiArrayList(Group);
+
+pub fn read_group_list(
+    buf: []u8,
+    gpa: std.mem.Allocator,
+) !GroupList {
+    var groups: GroupList = .empty;
+
+    var i: usize = 0;
+    var l: Group = .{
+        .header = try LeadIn.parse(buf[i..][0..28]),
+        .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
     };
+    for (0..l.objects.len) |j| {
+        std.debug.print("{s}\n", .{l.objects.get(j)});
+    }
+    try groups.append(gpa, l);
+    i += 28;
+    i += l.header.next_segment;
+
+    while (i < buf.len) {
+        l = .{
+            .header = try LeadIn.parse(buf[i..][0..28]),
+            .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
+        };
+        for (0..l.objects.len) |j| {
+            std.debug.print("{s}\n", .{l.objects.get(j)});
+        }
+        i += 28;
+        i += l.header.next_segment;
+    }
+    return groups;
 }
 
 test {
