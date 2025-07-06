@@ -32,7 +32,7 @@ pub fn read_data(buf: []const u8, ch_name: []const u8, objects: *const ObjectLis
                 initial_offset = chunk_size;
             }
         }
-        chunk_size += obj.data_index.dim * obj.data_index.length * try tdms.size_of(obj.data_index.dt);
+        chunk_size += obj.data_index.dim * obj.data_index.length * try obj.data_index.dt.size_of();
     }
     // std.debug.print("size john: {d}\n", .{target_obj.data_index.length * 8});
     // std.debug.print("index: {d}\n", .{obj_index});
@@ -40,15 +40,11 @@ pub fn read_data(buf: []const u8, ch_name: []const u8, objects: *const ObjectLis
     // std.debug.print("ch size: {d}\n", .{chunk_size});
 
     const num_chunks = raw_data_size / chunk_size;
-    var f = try std.fs.cwd().createFile("file.file", .{});
-    defer f.close();
-    var writer = f.writer();
 
     for (0..num_chunks) |i| {
-        // std.debug.print("{d}\n", .{std.mem.bytesAsSlice(f64, buf[start_idx + initial_offset ..][0 .. i * chunk_size])});
-
-        const b = buf[(start_idx + initial_offset + (chunk_size * i))..][0 .. target_obj.data_index.length * try tdms.size_of(target_obj.data_index.dt)];
-        try writer.print("{d:.2}\n", .{std.mem.bytesAsSlice(f64, b)});
+        const bruhc = buf[(start_idx + initial_offset + (chunk_size * i))..][0 .. target_obj.data_index.length * try target_obj.data_index.dt.size_of()];
+        const good = std.mem.bytesAsSlice(f64, bruhc);
+        std.debug.print("{d:.0}\n", .{good});
     }
 
     const a = &[_]u8{0};

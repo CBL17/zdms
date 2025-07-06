@@ -72,7 +72,7 @@ pub const Object = struct {
                     defer i += @sizeOf(u32);
                     break :blk std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
                 },
-                else => try tdms.size_of(data_type),
+                else => try data_type.size_of(),
             };
 
             const property = buf[i..][0..property_length];
