@@ -54,7 +54,7 @@ pub const Object = struct {
         pub fn parse(
             buf: []u8,
             index: *usize,
-        ) Property {
+        ) !Property {
             var i = index.*;
             defer index.* = i;
 
@@ -72,7 +72,7 @@ pub const Object = struct {
                     defer i += @sizeOf(u32);
                     break :blk std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
                 },
-                else => tdms.size_of(data_type),
+                else => try tdms.size_of(data_type),
             };
 
             const property = buf[i..][0..property_length];
@@ -114,7 +114,7 @@ pub const Object = struct {
                 => try writer.print("{d}", .{std.mem.bytesToValue(f64, self.value)}),
 
                 .string => try writer.print("{s}", .{self.value}),
-                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => unreachable,
+                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => try writer.print("empty", .{}),
             }
         }
     };
@@ -155,13 +155,13 @@ pub const Object = struct {
                     var properties: Properties = .empty;
                     var property_index: usize = 0;
                     for (0..num_properties) |_| {
-                        try properties.append(allocator, Property.parse(buf[i..], &property_index));
+                        try properties.append(allocator, try Property.parse(buf[i..], &property_index));
                     }
 
                     i += property_index;
 
                     return Object{
-                        .properies = Properties.empty,
+                        .properies = properties,
                         .path = path,
                         .data_index_tag = .no_data,
                         .data_index = DataIndex{
@@ -179,7 +179,7 @@ pub const Object = struct {
                     var properties: Properties = .empty;
                     var property_index: usize = 0;
                     for (0..num_properties) |_| {
-                        try properties.append(allocator, Property.parse(buf[i..], &property_index));
+                        try properties.append(allocator, try Property.parse(buf[i..], &property_index));
                     }
 
                     i += property_index;
@@ -215,7 +215,7 @@ pub const Object = struct {
 
         var property_index: usize = 0;
         for (0..num_properties) |_| {
-            try properties.append(allocator, Property.parse(buf[i..], &property_index));
+            try properties.append(allocator, try Property.parse(buf[i..], &property_index));
         }
         i += property_index;
 
