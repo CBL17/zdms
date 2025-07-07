@@ -55,16 +55,6 @@ pub const DataTypeError = error{
     UnsupportedDataType,
 };
 
-pub fn format_specifier(dt: DataType) DataTypeError!u32 {
-    return switch (dt) {
-        .bool => 'b',
-        .i8, .i16, .i32, .i64, .u8, .u16, .u32, .u64 => 'd',
-        .float, .float_unit, .double, .double_unit, .fixed_point => 'd',
-        .string => 's',
-        .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .string, .raw_data => DataTypeError.UnsupportedDataType,
-    };
-}
-
 const Group = struct {
     header: LeadIn,
     objects: MetaData.ObjectList,
@@ -72,7 +62,7 @@ const Group = struct {
 
 const GroupList = MultiArrayList(Group);
 
-pub fn read_group_list(
+pub fn read_groups(
     buf: []u8,
     gpa: std.mem.Allocator,
 ) !GroupList {
@@ -83,9 +73,6 @@ pub fn read_group_list(
         .header = try LeadIn.parse(buf[i..][0..28]),
         .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
     };
-    for (0..l.objects.len) |j| {
-        std.debug.print("{s}\n", .{l.objects.get(j)});
-    }
     try groups.append(gpa, l);
     i += 28;
     i += l.header.next_segment;
@@ -95,9 +82,7 @@ pub fn read_group_list(
             .header = try LeadIn.parse(buf[i..][0..28]),
             .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
         };
-        for (0..l.objects.len) |j| {
-            std.debug.print("{s}\n", .{l.objects.get(j)});
-        }
+        try groups.append(gpa, l);
         i += 28;
         i += l.header.next_segment;
     }
