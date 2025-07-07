@@ -140,7 +140,7 @@ pub const Object = struct {
         buf: []u8,
         index: *usize,
         last_object: ?Object,
-    ) anyerror!Object {
+    ) !Object {
         var i: usize = index.*;
         defer index.* = i;
 
@@ -272,10 +272,12 @@ pub fn parse(
 
     var index: usize = 0;
 
-    try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index, null));
-    for (1..num_objs) |i| {
-        const last_object = obj_list.get(i - 1);
-        try obj_list.append(allocator, try Object.parse(allocator, buf[4..], &index, last_object));
+    var last_object: ?Object = null;
+    for (0..num_objs) |_| {
+        const curr_object = try Object.parse(allocator, buf[4..], &index, last_object);
+        try obj_list.append(allocator, curr_object);
+
+        last_object = curr_object;
     }
 
     return obj_list;
