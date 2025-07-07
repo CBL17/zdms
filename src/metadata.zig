@@ -96,25 +96,34 @@ pub const Object = struct {
 
             try writer.print("{s}: ", .{self.name});
             switch (self.dt) {
-                .bool => try writer.print("{b}", .{self.value}),
+                .bool,
+                => try writer.print("{b}", .{self.value}),
                 .i8,
+                => try writer.print("{d}", .{std.mem.bytesToValue(i8, self.value)}),
                 .i16,
+                => try writer.print("{d}", .{std.mem.bytesToValue(i16, self.value)}),
                 .i32,
+                => try writer.print("{d}", .{std.mem.bytesToValue(i32, self.value)}),
                 .i64,
+                => try writer.print("{d}", .{std.mem.bytesToValue(i64, self.value)}),
                 .u8,
+                => try writer.print("{d}", .{std.mem.bytesToValue(u8, self.value)}),
                 .u16,
+                => try writer.print("{d}", .{std.mem.bytesToValue(u16, self.value)}),
                 .u32,
+                => try writer.print("{d}", .{std.mem.bytesToValue(u32, self.value)}),
                 .u64,
                 => try writer.print("{d}", .{std.mem.bytesToValue(u64, self.value)}),
                 .float,
                 .float_unit,
+                => try writer.print("{d}", .{std.mem.bytesToValue(f32, self.value)}),
                 .double,
                 .double_unit,
                 .fixed_point,
                 => try writer.print("{d}", .{std.mem.bytesToValue(f64, self.value)}),
-
-                .string => try writer.print("{s}", .{self.value}),
-                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => try writer.print("empty", .{}),
+                .string,
+                => try writer.print("{s}", .{self.value}),
+                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => try writer.print("not handled: {s}", .{@tagName(self.dt)}),
             }
         }
     };
