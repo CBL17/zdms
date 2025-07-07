@@ -68,22 +68,14 @@ pub fn read_groups(
     var groups: GroupList = .empty;
 
     var i: usize = 0;
-    var l: Group = .{
-        .header = try LeadIn.parse(buf[i..][0..28]),
-        .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
-    };
-    try groups.append(gpa, l);
-    i += 28;
-    i += l.header.next_segment;
-
     while (i < buf.len) {
-        l = .{
+        const group: Group = .{
             .header = try LeadIn.parse(buf[i..][0..28]),
             .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
         };
-        try groups.append(gpa, l);
+        try groups.append(gpa, group);
         i += 28;
-        i += l.header.next_segment;
+        i += group.header.next_segment;
     }
     return groups;
 }
