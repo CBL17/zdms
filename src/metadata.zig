@@ -1,4 +1,4 @@
-//! `MetaData` contains a three-level hierachy of objects including a file,
+//! TDMS metadata contains a three-level hierachy of objects including a file,
 //! groups, and channels. Each one of these object types can include any
 //! number of properties.
 const std = @import("std");

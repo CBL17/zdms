@@ -1,11 +1,11 @@
 const std = @import("std");
 const tdms = @import("tdms.zig");
 
-const MetaData = tdms.MetaData;
+const metadata = tdms.metadata;
 const LeadIn = tdms.LeadIn;
 
-const Object = MetaData.Object;
-const ObjectList = MetaData.ObjectList;
+const Object = metadata.Object;
+const ObjectList = metadata.ObjectList;
 
 const equals = std.mem.eql;
 

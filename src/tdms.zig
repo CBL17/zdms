@@ -5,7 +5,7 @@
 //! It will work pretty simply with how this one is spread out rn
 
 const std = @import("std");
-pub const MetaData = @import("metadata.zig");
+pub const metadata = @import("metadata.zig");
 pub const LeadIn = @import("LeadIn.zig");
 
 const MultiArrayList = std.MultiArrayList;
@@ -56,7 +56,7 @@ pub const DataTypeError = error{
 
 const Group = struct {
     header: LeadIn,
-    objects: MetaData.ObjectList,
+    objects: metadata.ObjectList,
 };
 
 const GroupList = MultiArrayList(Group);
@@ -71,7 +71,7 @@ pub fn read_groups(
     while (i < buf.len) {
         const group: Group = .{
             .header = try LeadIn.parse(buf[i..][0..28]),
-            .objects = try MetaData.parse(gpa, buf[i + 28 ..]),
+            .objects = try metadata.parse(gpa, buf[i + 28 ..]),
         };
         try groups.append(gpa, group);
         i += 28;
