@@ -3,9 +3,11 @@ const std = @import("std");
 
 const Self = @This();
 
-const u1Stringify = @import("utils.zig").u1ToBoolStr;
-
 const TDSM_TAG = "TDSm";
+
+pub fn u1Stringify(val: u1) []const u8 {
+    return if (val == 1) "true" else "false";
+}
 
 const Version = enum(u32) {
     VERSION_1 = 4712,
@@ -133,8 +135,8 @@ pub fn format(
 
     try writer.print("{s}\n", .{self.toc_mask});
     try writer.print("{s}\n", .{self.version});
-    try writer.print("Next Segment: +{d}\n", .{self.next_segment});
-    try writer.print("Data Segment: +{d}", .{self.data_offset});
+    try writer.print("Next Segment: +{x}\n", .{self.next_segment});
+    try writer.print("Data Segment: +{x}", .{self.data_offset});
 }
 
 test "size of LeadIn" {
