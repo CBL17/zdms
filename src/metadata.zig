@@ -6,6 +6,8 @@ const std = @import("std");
 const tdms = @import("tdms.zig");
 const DataType = tdms.DataType;
 
+const Timestamp = @import("Timestamp.zig");
+
 pub const ObjectList = std.MultiArrayList(Object);
 
 const Self = @This();
@@ -121,9 +123,12 @@ pub const Object = struct {
                 .double_unit,
                 .fixed_point,
                 => try writer.print("{d}", .{std.mem.bytesToValue(f64, self.value)}),
+                .timestamp,
+                // => try writer.print("{x}", .{self.value}),
+                => try writer.print("{s}", .{std.mem.bytesToValue(Timestamp, self.value)}),
                 .string,
                 => try writer.print("{s}", .{self.value}),
-                .complex_float, .timestamp, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => try writer.print("not handled: {s}", .{@tagName(self.dt)}),
+                .complex_float, .extended_float, .extended_float_unit, .complex_double, .void, .raw_data => try writer.print("not handled: {s}", .{@tagName(self.dt)}),
             }
         }
     };

@@ -83,4 +83,5 @@ pub fn read_groups(
 test {
     _ = @import("metadata.zig");
     _ = @import("LeadIn.zig");
+    _ = @import("Timestamp.zig");
 }
