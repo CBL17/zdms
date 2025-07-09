@@ -1,19 +1,19 @@
 //! TDMS metadata contains a three-level hierachy of objects including a file,
-//! groups, and channels. Each one of these object types can include any
-//! number of properties.
+//! groups, and channels. These are all objects and can include any number of
+//! properties.
+
+const Self = @This();
+
 const std = @import("std");
 
 const tdms = @import("tdms.zig");
 const DataType = tdms.DataType;
-
-const Timestamp = @import("Timestamp.zig");
+const Timestamp = tdms.Timestamp;
 
 pub const ObjectList = std.MultiArrayList(Object);
 
-const Self = @This();
-
+/// This is a representation of the file, group, and channel objects.
 pub const Object = struct {
-    // path len is the first 4 bytes but can be encapsulated in the slice
     path: []const u8,
     data_index_tag: DataIndexTag,
     data_index: DataIndex,
@@ -48,7 +48,8 @@ pub const Object = struct {
         };
     };
 
-    const Property = struct {
+    /// An object can hold any number of properties.
+    pub const Property = struct {
         name: []const u8,
         dt: DataType,
         value: []u8,
@@ -268,6 +269,8 @@ pub const Object = struct {
     }
 };
 
+/// Parses the metadata from a given byte slice, `buf`. `buf` is expected
+/// to begin at the very start of the metadata.
 pub fn parse(
     allocator: std.mem.Allocator,
     buf: []u8,

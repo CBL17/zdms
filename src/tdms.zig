@@ -1,14 +1,15 @@
-//! Unfortunately this johnson needs broken into more files most likely
-//! I am a big 'test where your code is' kinda bro so these files are
-//! gonna get much longer thus the need for more
-//!
-//! It will work pretty simply with how this one is spread out rn
-
 const std = @import("std");
+
 pub const metadata = @import("metadata.zig");
 pub const LeadIn = @import("LeadIn.zig");
+pub const Timestamp = @import("Timestamp.zig");
 
-const MultiArrayList = std.MultiArrayList;
+pub const Group = struct {
+    header: LeadIn,
+    objects: metadata.ObjectList,
+};
+
+pub const GroupList = std.MultiArrayList(Group);
 
 /// TDMS supported datatypes
 pub const DataType = enum(u32) {
@@ -21,11 +22,22 @@ pub const DataType = enum(u32) {
     u16 = 6,
     u32 = 7,
     u64 = 8,
+    // f32
     float = 9,
+    // f64
     double = 10,
     extended_float = 11,
+    /// From docs: "LabVIEW floating-point types with unit translate into
+    /// a floating-point channel with a property named unit_string that
+    /// contains the unit as a string."
     float_unit = 0x19,
+    /// From docs: "LabVIEW floating-point types with unit translate into
+    /// a floating-point channel with a property named unit_string that
+    /// contains the unit as a string."
     double_unit,
+    /// From docs: "LabVIEW floating-point types with unit translate into
+    /// a floating-point channel with a property named unit_string that
+    /// contains the unit as a string."
     extended_float_unit,
     string = 0x20,
     bool = 0x21,
@@ -33,10 +45,19 @@ pub const DataType = enum(u32) {
     /// seconds since 1/1/1904 00:00:00.00 UTC and the latter is fractions of a second
     timestamp = 0x44,
     fixed_point = 0x4F,
+    /// just two f32s for the real and imaginary parts.
     complex_float = 0x08000C,
+    /// just two f64s for the real and imaginary parts.
     complex_double = 0x10000D,
+    /// some overly complicated shit that I haven't implemented yet.
     raw_data = 0xFFFFFFFF,
 
+    pub const DataTypeError = error{
+        UnsupportedDataType,
+    };
+
+    /// Returns the size of a particular data type. Error is returned on variable sized
+    /// data types (strings) or unimplemented data types.
     pub fn size_of(self: DataType) DataTypeError!u32 {
         return switch (self) {
             .void => 0,
@@ -49,17 +70,6 @@ pub const DataType = enum(u32) {
         };
     }
 };
-
-pub const DataTypeError = error{
-    UnsupportedDataType,
-};
-
-const Group = struct {
-    header: LeadIn,
-    objects: metadata.ObjectList,
-};
-
-const GroupList = MultiArrayList(Group);
 
 pub fn read_groups(
     buf: []u8,
