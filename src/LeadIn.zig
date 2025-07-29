@@ -41,7 +41,7 @@ data_offset: u64,
 
 // by spec, always little endian
 /// Table of Contents
-const ToC = packed struct {
+pub const ToC = packed struct {
     _padding_1: u1 = 0,
     contains_meta_data: u1,
     new_obj_list: u1,

@@ -17,11 +17,11 @@ pub const Object = struct {
     path: []const u8,
     data_index_tag: DataIndexTag,
     data_index: DataIndex,
-    properies: Properties,
+    properies: PropertyList,
 
-    const Properties = std.MultiArrayList(Property);
+    pub const PropertyList = std.MultiArrayList(Property);
 
-    const DataIndexTag = enum(u32) {
+    pub const DataIndexTag = enum(u32) {
         no_data = 0xFFFFFFFF,
         same_as_previous = 0x0,
         format_changing = 0x69120000,
@@ -135,7 +135,7 @@ pub const Object = struct {
     };
 
     pub const empty = Object{
-        .properies = Properties.empty,
+        .properies = PropertyList.empty,
         .data_index_tag = .no_data,
         .path = "",
         .data_index = DataIndex.empty,
@@ -167,7 +167,7 @@ pub const Object = struct {
                     const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
                     i += @sizeOf(u32);
 
-                    var properties: Properties = .empty;
+                    var properties: PropertyList = .empty;
                     var property_index: usize = 0;
                     for (0..num_properties) |_| {
                         try properties.append(allocator, try Property.parse(buf[i..], &property_index));
@@ -191,7 +191,7 @@ pub const Object = struct {
                     const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
                     i += @sizeOf(u32);
 
-                    var properties: Properties = .empty;
+                    var properties: PropertyList = .empty;
                     var property_index: usize = 0;
                     for (0..num_properties) |_| {
                         try properties.append(allocator, try Property.parse(buf[i..], &property_index));
@@ -226,7 +226,7 @@ pub const Object = struct {
         const num_properties = std.mem.bytesToValue(u32, buf[i..][0..@sizeOf(u32)]);
         i += @sizeOf(u32);
 
-        var properties: Properties = .empty;
+        var properties: PropertyList = .empty;
 
         var property_index: usize = 0;
         for (0..num_properties) |_| {
@@ -263,6 +263,7 @@ pub const Object = struct {
         _ = fmt;
 
         try writer.print("Path: {s}\n", .{self.path});
+        try writer.print("Datatype: {s}\n", .{@tagName(self.data_index.dt)});
         for (0..self.properies.len) |i| {
             try writer.print("{s}\n", .{self.properies.get(i)});
         }
