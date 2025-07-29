@@ -4,12 +4,35 @@ pub const metadata = @import("metadata.zig");
 pub const LeadIn = @import("LeadIn.zig");
 pub const Timestamp = @import("Timestamp.zig");
 
+pub const TDMSFile = struct {
+    name: []const u8,
+    groups: std.MultiArrayList(Group),
+
+    pub fn contains_group(self: TDMSFile, group_name: []const u8) bool {
+        for (0..self.groups.len) |i| {
+            const existing_group = self.groups.get(i);
+            if (std.mem.eql(u8, existing_group.name, group_name)) return true;
+        }
+        return false;
+    }
+};
+
 pub const Group = struct {
+    name: []const u8,
+    properties: metadata.Object.PropertyList,
+    channels: std.MultiArrayList(Channel),
+};
+
+pub const Channel = struct {
+    name: []const u8,
+    properties: metadata.Object.PropertyList,
+};
+
+const Section = struct {
     header: LeadIn,
     objects: metadata.ObjectList,
 };
-
-pub const GroupList = std.MultiArrayList(Group);
+const SectionList = std.MultiArrayList(Section);
 
 /// TDMS supported datatypes
 pub const DataType = enum(u32) {
@@ -71,15 +94,15 @@ pub const DataType = enum(u32) {
     }
 };
 
-pub fn read_groups(
+pub fn read_sections(
     buf: []u8,
     gpa: std.mem.Allocator,
-) !GroupList {
-    var groups: GroupList = .empty;
+) !SectionList {
+    var groups: SectionList = .empty;
 
     var i: usize = 0;
     while (i < buf.len) {
-        const group: Group = .{
+        const group: Section = .{
             .header = try LeadIn.parse(buf[i..][0..28]),
             .objects = try metadata.parse(gpa, buf[i + 28 ..]),
         };
@@ -88,6 +111,80 @@ pub fn read_groups(
         i += group.header.next_segment;
     }
     return groups;
+}
+
+pub fn read_file(gpa: std.mem.Allocator, path: []const u8) !TDMSFile {
+    const file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
+    const file_metadata = try file.metadata();
+
+    const ptr = try std.posix.mmap(
+        null,
+        file_metadata.size(),
+        std.posix.PROT.READ,
+        .{ .TYPE = .SHARED },
+        file.handle,
+        0,
+    );
+
+    var sections = try read_sections(ptr, gpa);
+
+    var tdms_output: TDMSFile = .{
+        .name = "",
+        .groups = .empty,
+    };
+    for (0..sections.len) |i| {
+        const s = sections.get(i);
+        _ = s.header.data_offset;
+
+        for (0..s.objects.len) |j| {
+            const obj: metadata.Object = s.objects.get(j);
+
+            const no_data = obj.data_index_tag == metadata.Object.DataIndexTag.no_data;
+            const path_is_not_slash = !std.mem.eql(u8, obj.path, "/");
+
+            if (no_data and path_is_not_slash) {
+                var end: usize = 0;
+                // assuming there is a '
+                while (obj.path[2..][end] != '\'') : (end += 1) {}
+                const name = obj.path[2..][0..end];
+
+                if (!tdms_output.contains_group(name)) {
+                    const group: Group = .{
+                        .name = name,
+                        .channels = .empty,
+                        .properties = obj.properies, // this transfers ownership
+                    };
+
+                    try tdms_output.groups.append(gpa, group);
+                }
+                // channel
+            } else if (path_is_not_slash) {
+                var end: usize = 0;
+                // assuming there is a '
+                while (obj.path[2..][end] != '\'') : (end += 1) {}
+                const group_name = obj.path[2..][0..end];
+                // group could not exist?
+
+                var group_index: usize = 0;
+                var channel_group_name = tdms_output.groups.get(group_index).name;
+                while (!std.mem.eql(u8, channel_group_name, group_name)) {
+                    group_index += 1;
+                    channel_group_name = tdms_output.groups.get(group_index).name;
+                }
+
+                var ch_end: usize = 0;
+                while (obj.path[end + 5 ..][ch_end] != '\'') : (ch_end += 1) {}
+                const channel_name = obj.path[end + 5 ..][0..ch_end];
+
+                const channel: Channel = .{
+                    .name = channel_name,
+                    .properties = .empty,
+                };
+                try tdms_output.groups.items(.channels)[group_index].append(gpa, channel);
+            }
+        }
+    }
+    return tdms_output;
 }
 
 test {
