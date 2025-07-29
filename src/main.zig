@@ -6,24 +6,23 @@ const tdms = @import("tdms");
 const LeadIn = tdms.LeadIn;
 const metadata = tdms.metadata;
 
-var dba = std.heap.DebugAllocator(.{ .safety = true }).init;
-const allocator = dba.allocator();
+const allocator = std.heap.smp_allocator;
+
+const DEFAULT_FILE = "test/medium.tdms";
 
 pub fn main() !void {
-    const file = try fs.cwd().openFile("test/large.tdms", .{});
-    defer file.close();
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
-    const buf = try file.readToEndAlloc(allocator, 10000000000);
+    const file_path = if (args.len <= 1) DEFAULT_FILE else args[1];
+    const file = try tdms.read_file(allocator, file_path);
+    for (0..file.groups.len) |i| {
+        const group = file.groups.get(i);
+        std.debug.print("{s}\n", .{group.name});
 
-    var groups = try tdms.read_groups(buf, allocator);
-    defer groups.deinit(allocator);
-
-    for (0..groups.len) |i| {
-        const g = groups.get(i);
-
-        for (0..g.objects.len) |j| {
-            const o = g.objects.get(j);
-            std.debug.print("{s}\n", .{o});
+        for (0..group.channels.len) |j| {
+            const channel = group.channels.get(j);
+            std.debug.print("    {s}\n", .{channel.name});
         }
     }
 }
