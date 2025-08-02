@@ -17,7 +17,7 @@ pub const Object = struct {
     path: []const u8,
     data_index_tag: DataIndexTag,
     data_index: DataIndex,
-    properies: PropertyList,
+    properties: PropertyList,
 
     pub const PropertyList = std.MultiArrayList(Property);
 
@@ -135,7 +135,7 @@ pub const Object = struct {
     };
 
     pub const empty = Object{
-        .properies = PropertyList.empty,
+        .properties = PropertyList.empty,
         .data_index_tag = .no_data,
         .path = "",
         .data_index = DataIndex.empty,
@@ -176,7 +176,7 @@ pub const Object = struct {
                     i += property_index;
 
                     return Object{
-                        .properies = properties,
+                        .properties = properties,
                         .path = path,
                         .data_index_tag = .no_data,
                         .data_index = DataIndex{
@@ -200,7 +200,7 @@ pub const Object = struct {
                     i += property_index;
 
                     return Object{
-                        .properies = properties,
+                        .properties = properties,
                         .path = path,
                         .data_index_tag = last_object.?.data_index_tag,
                         .data_index = last_object.?.data_index,
@@ -241,7 +241,7 @@ pub const Object = struct {
         }
 
         return Object{
-            .properies = properties,
+            .properties = properties,
             .path = path,
             .data_index_tag = .new_index,
             .data_index = DataIndex{
@@ -264,9 +264,13 @@ pub const Object = struct {
 
         try writer.print("Path: {s}\n", .{self.path});
         try writer.print("Datatype: {s}\n", .{@tagName(self.data_index.dt)});
-        for (0..self.properies.len) |i| {
-            try writer.print("{s}\n", .{self.properies.get(i)});
+        for (0..self.properties.len) |i| {
+            try writer.print("{s}\n", .{self.properties.get(i)});
         }
+    }
+
+    pub fn deinit(self: *Object, gpa: std.mem.Allocator) void {
+        self.properties.deinit(gpa);
     }
 };
 
