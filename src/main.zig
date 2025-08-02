@@ -6,16 +6,30 @@ const tdms = @import("tdms");
 const LeadIn = tdms.LeadIn;
 const metadata = tdms.metadata;
 
-const allocator = std.heap.smp_allocator;
-
 const DEFAULT_FILE = "test/medium.tdms";
 
 pub fn main() !void {
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    var allocator = std.heap.DebugAllocator(.{
+        .safety = false,
+    }).init;
+    const gpa = allocator.allocator();
+    defer _ = allocator.deinit();
 
-    const file_path = if (args.len <= 1) DEFAULT_FILE else args[1];
-    const file = try tdms.read_file(allocator, file_path);
+    var args_it = try std.process.argsWithAllocator(gpa);
+    defer args_it.deinit();
+
+    var file_path: []const u8 = undefined;
+
+    _ = args_it.skip();
+    if (args_it.next()) |arg| {
+        file_path = arg;
+    } else {
+        file_path = DEFAULT_FILE;
+    }
+
+    var file: tdms.TDMSFile = try tdms.read_file(gpa, file_path);
+    defer file.deinit(gpa);
+
     for (0..file.groups.len) |i| {
         const group = file.groups.get(i);
         std.debug.print("{s}\n", .{group.name});
