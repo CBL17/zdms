@@ -7,13 +7,23 @@ pub const Timestamp = @import("Timestamp.zig");
 pub const TDMSFile = struct {
     name: []const u8,
     groups: std.MultiArrayList(Group),
+    backing_data: []align(std.heap.page_size_min) u8,
 
-    pub fn contains_group(self: TDMSFile, group_name: []const u8) bool {
+    fn contains_group(self: *TDMSFile, group_name: []const u8) bool {
         for (0..self.groups.len) |i| {
             const existing_group = self.groups.get(i);
             if (std.mem.eql(u8, existing_group.name, group_name)) return true;
         }
         return false;
+    }
+
+    pub fn deinit(self: *TDMSFile, gpa: std.mem.Allocator) void {
+        for (0..self.groups.len) |i| {
+            var group = self.groups.get(i);
+            group.deinit(gpa);
+        }
+        self.groups.deinit(gpa);
+        std.posix.munmap(self.backing_data);
     }
 };
 
@@ -21,16 +31,38 @@ pub const Group = struct {
     name: []const u8,
     properties: metadata.Object.PropertyList,
     channels: std.MultiArrayList(Channel),
+
+    pub fn deinit(self: *Group, gpa: std.mem.Allocator) void {
+        for (0..self.channels.len) |i| {
+            var channel = self.channels.get(i);
+            channel.deinit(gpa);
+        }
+        self.channels.deinit(gpa);
+        self.properties.deinit(gpa);
+    }
 };
 
 pub const Channel = struct {
     name: []const u8,
     properties: metadata.Object.PropertyList,
+
+    pub fn deinit(self: *Channel, gpa: std.mem.Allocator) void {
+        self.properties.deinit(gpa);
+    }
 };
 
 const Section = struct {
     header: LeadIn,
     objects: metadata.ObjectList,
+
+    pub fn deinit(self: *Section, gpa: std.mem.Allocator) void {
+        for (0..self.objects.len) |i| {
+            var object = self.objects.get(i);
+
+            object.deinit(gpa);
+        }
+        self.objects.deinit(gpa);
+    }
 };
 const SectionList = std.MultiArrayList(Section);
 
@@ -115,6 +147,8 @@ pub fn read_sections(
 
 pub fn read_file(gpa: std.mem.Allocator, path: []const u8) !TDMSFile {
     const file = try std.fs.cwd().openFile(path, .{ .mode = .read_only });
+    defer file.close();
+
     const file_metadata = try file.metadata();
 
     const ptr = try std.posix.mmap(
@@ -127,10 +161,19 @@ pub fn read_file(gpa: std.mem.Allocator, path: []const u8) !TDMSFile {
     );
 
     var sections = try read_sections(ptr, gpa);
+    defer {
+        for (0..sections.len) |i| {
+            var section = sections.get(i);
+
+            section.deinit(gpa);
+        }
+        sections.deinit(gpa);
+    }
 
     var tdms_output: TDMSFile = .{
         .name = "",
         .groups = .empty,
+        .backing_data = ptr,
     };
     for (0..sections.len) |i| {
         const s = sections.get(i);
@@ -143,6 +186,8 @@ pub fn read_file(gpa: std.mem.Allocator, path: []const u8) !TDMSFile {
             const path_is_not_slash = !std.mem.eql(u8, obj.path, "/");
 
             if (no_data and path_is_not_slash) {
+                // group
+
                 var end: usize = 0;
                 // assuming there is a '
                 while (obj.path[2..][end] != '\'') : (end += 1) {}
@@ -152,7 +197,7 @@ pub fn read_file(gpa: std.mem.Allocator, path: []const u8) !TDMSFile {
                     const group: Group = .{
                         .name = name,
                         .channels = .empty,
-                        .properties = obj.properies, // this transfers ownership
+                        .properties = obj.properties,
                     };
 
                     try tdms_output.groups.append(gpa, group);

@@ -10,7 +10,7 @@ const DEFAULT_FILE = "test/medium.tdms";
 
 pub fn main() !void {
     var allocator = std.heap.DebugAllocator(.{
-        .safety = false,
+        .safety = true,
     }).init;
     const gpa = allocator.allocator();
     defer _ = allocator.deinit();
